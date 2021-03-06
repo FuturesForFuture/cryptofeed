@@ -138,7 +138,7 @@ class Coinbase(Feed):
 
             await self.book_callback(self.l3_book[pair], L3_BOOK, pair, False, delta, ts, timestamp)
 
-        order_type = self.order_type_map.get(msg['taker_order_id'])
+        # order_type = self.order_type_map.get(msg['taker_order_id'])
         await self.callback(TRADES,
                             feed=self.id,
                             symbol=symbol_exchange_to_std(msg['product_id']),
@@ -148,7 +148,6 @@ class Coinbase(Feed):
                             price=Decimal(msg['price']),
                             timestamp=ts,
                             receipt_timestamp=timestamp,
-                            order_type=order_type
                             )
 
     async def _pair_level2_snapshot(self, msg: dict, timestamp: float):
