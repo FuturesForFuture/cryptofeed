@@ -230,7 +230,7 @@ _feed_to_exchange_map = {
         HUOBI_LINEAR_SWAP: 'funding'
     },
     OPEN_INTEREST: {
-        OKEX: '{}/ticker',
+        OKEX: UNSUPPORTED,
         BITMEX: 'instrument',
         KRAKEN_FUTURES: 'ticker',
         DERIBIT: 'ticker',
@@ -245,7 +245,7 @@ _feed_to_exchange_map = {
         BINANCE_DELIVERY: 'forceOrder',
         FTX: 'trades',
         DERIBIT: 'trades',
-        OKEX: LIQUIDATIONS,
+        OKEX: UNSUPPORTED,
     },
     MARKET_INFO: {
         COINGECKO: MARKET_INFO
