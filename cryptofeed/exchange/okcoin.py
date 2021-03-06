@@ -134,7 +134,7 @@ class OKCoin(Feed):
         {'table': 'spot/trade', 'data': [{'instrument_id': 'BTC-USD', 'price': '3977.44', 'side': 'buy', 'size': '0.0096', 'timestamp': '2019-03-22T22:45:44.578Z', 'trade_id': '486519521'}]}
         """
         for trade in msg['data']:
-            if msg['table'] == 'futures/trade':
+            if msg['table'] == 'futures/trade' or msg['table'] == 'option/trade':
                 amount_sym = 'qty'
             else:
                 amount_sym = 'size'
