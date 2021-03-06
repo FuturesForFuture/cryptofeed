@@ -10,7 +10,6 @@ from cryptofeed.defines import BID, ASK, BUY, L2_BOOK, SELL, TICKER, TRADES, UPB
 from cryptofeed.feed import Feed
 from cryptofeed.standards import symbol_exchange_to_std, timestamp_normalize
 
-
 LOG = logging.getLogger('feedhandler')
 
 
@@ -104,6 +103,18 @@ class Upbit(Feed):
         self.l2_book[pair] = update
 
         await self.book_callback(self.l2_book[pair], L2_BOOK, pair, forced, False, orderbook_timestamp, timestamp)
+
+        book = self.l2_book[pair]
+        ask_price_0, ask_qty_0 = book[ASK].peekitem(index=0)
+        bid_price_0, bid_qty_0 = book[BID].peekitem(index=-1)
+        await self.callback(TICKER, feed=self.id,
+                            symbol=pair,
+                            bid=bid_price_0,
+                            ask=ask_price_0,
+                            bid_amount=bid_qty_0,
+                            ask_amount=ask_qty_0,
+                            timestamp=orderbook_timestamp,
+                            receipt_timestamp=timestamp)
 
     async def _ticker(self, msg: dict, timestamp: float):
         """

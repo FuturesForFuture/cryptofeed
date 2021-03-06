@@ -110,6 +110,8 @@ class Kraken(Feed):
                             symbol=pair,
                             bid=Decimal(msg[1]['b'][0]),
                             ask=Decimal(msg[1]['a'][0]),
+                            bid_amount=Decimal(msg[1]['b'][2]),
+                            ask_amount=Decimal(msg[1]['a'][2]),
                             timestamp=timestamp,
                             receipt_timestamp=timestamp)
 
@@ -157,6 +159,18 @@ class Kraken(Feed):
             if self.checksum_validation and 'c' in msg[0] and self.__calc_checksum(pair) != msg[0]['c']:
                 raise BadChecksum("Checksum validation on orderbook failed")
             await self.book_callback(self.l2_book[pair], L2_BOOK, pair, False, delta, timestamp, timestamp)
+
+            book = self.l2_book[pair]
+            ask_price_0, ask_qty_0 = book[ASK].peekitem(index=0)
+            bid_price_0, bid_qty_0 = book[BID].peekitem(index=-1)
+            await self.callback(TICKER, feed=self.id,
+                                symbol=pair,
+                                bid=bid_price_0,
+                                ask=ask_price_0,
+                                bid_amount=bid_qty_0,
+                                ask_amount=ask_qty_0,
+                                timestamp=timestamp,
+                                receipt_timestamp=timestamp)
 
     async def message_handler(self, msg: str, conn, timestamp: float):
 

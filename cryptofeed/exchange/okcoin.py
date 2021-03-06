@@ -70,6 +70,7 @@ class OKCoin(Feed):
         for chunk in split.list_by_max_items(symbol_channels, 33):
             LOG.info("%s: Subscribe to %s args from %r to %r", self.id, len(chunk), chunk[0], chunk[-1])
             request = {"op": "subscribe", "args": chunk}
+            print(request)
             await conn.send(json.dumps(request))
 
     @staticmethod
@@ -95,23 +96,39 @@ class OKCoin(Feed):
 
     async def _ticker(self, msg: dict, timestamp: float):
         """
-        {'table': 'spot/ticker', 'data': [{'instrument_id': 'BTC-USD', 'last': '3977.74', 'best_bid': '3977.08', 'best_ask': '3978.73', 'open_24h': '3978.21', 'high_24h': '3995.43', 'low_24h': '3961.02', 'base_volume_24h': '248.245', 'quote_volume_24h': '988112.225861', 'timestamp': '2019-03-22T22:26:34.019Z'}]}
+        {
+            "table": "futures/depth5",
+            "data": [{
+                "asks": [
+                    ["5556.82", "11", "0", "1"],
+                    ["5556.84", "98", "0", "4"],
+                    ["5556.92", "1", "0", "1"],
+                    ["5557.6", "4", "0", "1"],
+                    ["5557.85", "2", "0", "1"]
+                ],
+                "bids": [
+                    ["5556.81", "1", "0", "1"],
+                    ["5556.8", "2", "0", "1"],
+                    ["5556.79", "1", "0", "1"],
+                    ["5556.19", "100", "0", "1"],
+                    ["5556.08", "2", "0", "1"]
+                ],
+                "instrument_id": "BTC-USD-190628",
+                "timestamp": "2019-05-06T07:19:39.348Z"
+            }]
+        }
         """
         for update in msg['data']:
             pair = update['instrument_id']
             update_timestamp = timestamp_normalize(self.id, update['timestamp'])
             await self.callback(TICKER, feed=self.id,
                                 symbol=pair,
-                                bid=Decimal(update['best_bid']),
-                                ask=Decimal(update['best_ask']),
+                                bid=Decimal(update['bids'][0][0]) if len(update['bids']) > 0 else None,
+                                bid_amount=Decimal(update['bids'][0][1]) if len(update['bids']) > 0 else None,
+                                ask=Decimal(update['asks'][0][0]) if len(update['asks']) > 0 else None,
+                                ask_amount=Decimal(update['asks'][0][1]) if len(update['asks']) > 0 else None,
                                 timestamp=update_timestamp,
                                 receipt_timestamp=timestamp)
-            if 'open_interest' in update:
-                oi = update['open_interest']
-                if pair in self.open_interest and oi == self.open_interest[pair]:
-                    continue
-                self.open_interest[pair] = oi
-                await self.callback(OPEN_INTEREST, feed=self.id, symbol=pair, open_interest=oi, timestamp=update_timestamp, receipt_timestamp=timestamp)
 
     async def _trade(self, msg: dict, timestamp: float):
         """
@@ -196,7 +213,7 @@ class OKCoin(Feed):
             else:
                 LOG.warning("%s: Unhandled event %s", self.id, msg)
         elif 'table' in msg:
-            if 'ticker' in msg['table']:
+            if 'depth5' in msg['table']:
                 await self._ticker(msg, timestamp)
             elif 'trade' in msg['table']:
                 await self._trade(msg, timestamp)

@@ -28,6 +28,7 @@ from cryptofeed.exchange.hitbtc import HitBTC
 from cryptofeed.exchange.huobi import Huobi
 from cryptofeed.exchange.huobi_dm import HuobiDM
 from cryptofeed.exchange.huobi_swap import HuobiSwap
+from cryptofeed.exchange.huobi_linear_swap import HuobiLinearSwap
 from cryptofeed.exchange.kraken import Kraken
 from cryptofeed.exchange.kraken_futures import KrakenFutures
 from cryptofeed.exchange.okcoin import OKCoin
@@ -35,3 +36,41 @@ from cryptofeed.exchange.okex import OKEx
 from cryptofeed.exchange.poloniex import Poloniex
 from cryptofeed.exchange.probit import Probit
 from cryptofeed.exchange.upbit import Upbit
+
+exchange_list = [
+    Binance,
+    BinanceFutures,
+    BinanceDelivery,
+    BinanceUS,
+
+    Huobi,
+    HuobiDM,
+    HuobiSwap,
+    HuobiLinearSwap,
+
+    # OKCoin,
+    OKEx,
+
+    BitcoinCom,
+    Bitfinex,
+    Bitflyer,
+    Bitmax,
+    Bitmex,
+    Bitstamp,
+    Bittrex,
+    Blockchain,
+    Bybit,
+    Coinbase,
+    Deribit,
+    EXX,
+    FTX,
+    FTXUS,
+    Gateio,
+    Gemini,
+    HitBTC,
+    Kraken,
+    KrakenFutures,
+    Poloniex,
+    Probit,
+    Upbit,
+]

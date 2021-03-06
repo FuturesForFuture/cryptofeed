@@ -247,6 +247,18 @@ class FTX(Feed):
                 raise BadChecksum
             await self.book_callback(self.l2_book[pair], L2_BOOK, pair, False, delta, float(msg['data']['time']), timestamp)
 
+        book = self.l2_book[pair]
+        ask_price_0, ask_qty_0 = book[ASK].peekitem(index=0)
+        bid_price_0, bid_qty_0 = book[BID].peekitem(index=-1)
+        await self.callback(TICKER, feed=self.id,
+                            symbol=pair,
+                            bid=bid_price_0,
+                            ask=ask_price_0,
+                            bid_amount=bid_qty_0,
+                            ask_amount=ask_qty_0,
+                            timestamp=float(msg['data']['time']),
+                            receipt_timestamp=timestamp)
+
     async def message_handler(self, msg: str, conn, timestamp: float):
 
         msg = json.loads(msg, parse_float=Decimal)
@@ -257,8 +269,8 @@ class FTX(Feed):
                 await self._book(msg, timestamp)
             elif msg['channel'] == 'trades':
                 await self._trade(msg, timestamp)
-            elif msg['channel'] == 'ticker':
-                await self._ticker(msg, timestamp)
+            # elif msg['channel'] == 'ticker':
+            #     await self._ticker(msg, timestamp)
             else:
                 LOG.warning("%s: Invalid message type %s", self.id, msg)
         else:

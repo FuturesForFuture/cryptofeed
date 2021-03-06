@@ -97,29 +97,12 @@ class Binance(Feed):
     async def _ticker(self, msg: dict, timestamp: float):
         """
         {
-        "e": "24hrTicker",  // Event type
-        "E": 123456789,     // Event time
-        "s": "BNBBTC",      // Symbol
-        "p": "0.0015",      // Price change
-        "P": "250.00",      // Price change percent
-        "w": "0.0018",      // Weighted average price
-        "x": "0.0009",      // Previous day's close price
-        "c": "0.0025",      // Current day's close price
-        "Q": "10",          // Close trade's quantity
-        "b": "0.0024",      // Best bid price
-        "B": "10",          // Best bid quantity
-        "a": "0.0026",      // Best ask price
-        "A": "100",         // Best ask quantity
-        "o": "0.0010",      // Open price
-        "h": "0.0025",      // High price
-        "l": "0.0010",      // Low price
-        "v": "10000",       // Total traded base asset volume
-        "q": "18",          // Total traded quote asset volume
-        "O": 0,             // Statistics open time
-        "C": 86400000,      // Statistics close time
-        "F": 0,             // First trade ID
-        "L": 18150,         // Last trade Id
-        "n": 18151          // Total number of trades
+          "u":400900217,     // order book updateId
+          "s":"BNBUSDT",     // 交易对
+          "b":"25.35190000", // 买单最优挂单价格
+          "B":"31.21000000", // 买单最优挂单数量
+          "a":"25.36520000", // 卖单最优挂单价格
+          "A":"40.66000000"  // 卖单最优挂单数量
         }
         """
         pair = symbol_exchange_to_std(msg['s'])
@@ -129,7 +112,9 @@ class Binance(Feed):
                             symbol=pair,
                             bid=bid,
                             ask=ask,
-                            timestamp=timestamp_normalize(self.id, msg['E']),
+                            bid_amount=Decimal(msg["B"]),
+                            ask_amount=Decimal(msg["A"]),
+                            timestamp=None,
                             receipt_timestamp=timestamp)
 
     async def _liquidations(self, msg: dict, timestamp: float):
@@ -275,12 +260,13 @@ class Binance(Feed):
         msg = msg['data']
         pair = pair.upper()
 
-        if msg['e'] == 'depthUpdate':
+        if 'e' not in msg:
+            # ticker
+            await self._ticker(msg, timestamp)
+        elif msg['e'] == 'depthUpdate':
             await self._book(conn, msg, pair, timestamp)
         elif msg['e'] == 'aggTrade':
             await self._trade(msg, timestamp)
-        elif msg['e'] == '24hrTicker':
-            await self._ticker(msg, timestamp)
         elif msg['e'] == 'forceOrder':
             await self._liquidations(msg, timestamp)
         elif msg['e'] == 'markPriceUpdate':

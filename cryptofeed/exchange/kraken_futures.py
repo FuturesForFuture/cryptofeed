@@ -26,15 +26,9 @@ class KrakenFutures(Feed):
     def __init__(self, **kwargs):
         super().__init__('wss://futures.kraken.com/ws/v1', **kwargs)
 
-        # TODO: the same verification (below) is done in Bitmex and Kraken => share this code in a common function in super class Feed
-        instruments = self.get_instruments()
         if self.subscription:
             subscribing_instruments = list(self.subscription.values())
             self.symbols = set(pair for inner in subscribing_instruments for pair in inner)
-
-        for pair in self.symbols:
-            if pair not in instruments:
-                raise ValueError(f"{pair} is not active on {self.id}")
 
         self.__reset()
 
@@ -155,6 +149,18 @@ class KrakenFutures(Feed):
             self.l2_book[pair][s][price] = amount
 
         await self.book_callback(self.l2_book[pair], L2_BOOK, pair, False, delta, timestamp, timestamp)
+
+        book = self.l2_book[pair]
+        ask_price_0, ask_qty_0 = book[ASK].peekitem(index=0)
+        bid_price_0, bid_qty_0 = book[BID].peekitem(index=-1)
+        await self.callback(TICKER, feed=self.id,
+                            symbol=pair,
+                            bid=bid_price_0,
+                            ask=ask_price_0,
+                            bid_amount=bid_qty_0,
+                            ask_amount=ask_qty_0,
+                            timestamp=timestamp,
+                            receipt_timestamp=timestamp)
 
     async def _funding(self, msg: dict, pair: str, timestamp: float):
         if msg['tag'] == 'perpetual':

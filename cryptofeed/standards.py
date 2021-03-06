@@ -16,7 +16,7 @@ import pandas as pd
 
 from cryptofeed.defines import (BINANCE, BINANCE_DELIVERY, BINANCE_FUTURES, BINANCE_US, BITCOINCOM, BITFLYER, BITFINEX, BITMAX, BITMEX,
                                 BITSTAMP, BITTREX, BLOCKCHAIN, BYBIT, COINBASE, COINGECKO,
-                                DERIBIT, EXX, FTX, FTX_US, GATEIO, GEMINI, HITBTC, HUOBI, HUOBI_DM, HUOBI_SWAP,
+                                DERIBIT, EXX, FTX, FTX_US, GATEIO, GEMINI, HITBTC, HUOBI, HUOBI_DM, HUOBI_SWAP, HUOBI_LINEAR_SWAP,
                                 KRAKEN, KRAKEN_FUTURES, OKCOIN, OKEX, POLONIEX, PROBIT, UPBIT, WHALE_ALERT)
 from cryptofeed.defines import (FILL_OR_KILL, IMMEDIATE_OR_CANCEL, LIMIT, MAKER_OR_CANCEL, MARKET, UNSUPPORTED)
 from cryptofeed.defines import (FUNDING, FUTURES_INDEX, L2_BOOK, L3_BOOK, LIQUIDATIONS, OPEN_INTEREST, MARKET_INFO,
@@ -75,7 +75,7 @@ def timestamp_normalize(exchange, ts):
         return ts.timestamp()
     elif exchange in {BITMEX, HITBTC, OKCOIN, OKEX, FTX, FTX_US, BITCOINCOM, PROBIT, COINGECKO}:
         return pd.Timestamp(ts).timestamp()
-    elif exchange in {HUOBI, HUOBI_DM, HUOBI_SWAP, BITFINEX, BYBIT, DERIBIT, BINANCE, BINANCE_US, BINANCE_FUTURES,
+    elif exchange in {HUOBI, HUOBI_DM, HUOBI_SWAP, HUOBI_LINEAR_SWAP, BITFINEX, BYBIT, DERIBIT, BINANCE, BINANCE_US, BINANCE_FUTURES,
                       BINANCE_DELIVERY, GEMINI, BITTREX, BITMAX, KRAKEN_FUTURES, UPBIT}:
         return ts / 1000.0
     elif exchange in {BITSTAMP}:
@@ -104,6 +104,7 @@ _feed_to_exchange_map = {
         HUOBI: 'depth.step0',
         HUOBI_DM: 'depth.step0',
         HUOBI_SWAP: 'depth.step0',
+        HUOBI_LINEAR_SWAP: 'depth.step0',
         OKCOIN: 'spot/depth_l2_tbt',
         OKEX: '{}/depth_l2_tbt',
         DERIBIT: 'book',
@@ -165,6 +166,7 @@ _feed_to_exchange_map = {
         HUOBI: 'trade.detail',
         HUOBI_DM: 'trade.detail',
         HUOBI_SWAP: 'trade.detail',
+        HUOBI_LINEAR_SWAP: 'trade.detail',
         OKCOIN: 'spot/trade',
         OKEX: '{}/trade',
         DERIBIT: 'trades',
@@ -187,26 +189,28 @@ _feed_to_exchange_map = {
         COINBASE: 'ticker',
         BITMEX: 'quote',
         BITFLYER: 'lightning_ticker_{}',
-        KRAKEN: TICKER,
-        KRAKEN_FUTURES: 'ticker_lite',
-        BINANCE: 'ticker',
-        BINANCE_US: 'ticker',
-        BINANCE_FUTURES: 'ticker',
-        BINANCE_DELIVERY: 'ticker',
+        KRAKEN: "book",
+        KRAKEN_FUTURES: 'book',
+        BINANCE: 'bookTicker',
+        BINANCE_US: 'bookTicker',
+        BINANCE_FUTURES: 'bookTicker',
+        BINANCE_DELIVERY: 'bookTicker',
         BLOCKCHAIN: UNSUPPORTED,
-        HUOBI: UNSUPPORTED,
-        HUOBI_DM: UNSUPPORTED,
-        OKCOIN: '{}/ticker',
-        OKEX: '{}/ticker',
+        HUOBI: 'bbo',
+        HUOBI_DM: 'bbo',
+        HUOBI_SWAP: 'bbo',
+        HUOBI_LINEAR_SWAP: 'bbo',
+        OKCOIN: '{}/depth5',
+        OKEX: '{}/depth5',
         DERIBIT: "ticker",
-        BYBIT: UNSUPPORTED,
-        FTX: "ticker",
-        FTX_US: "ticker",
+        BYBIT: "orderBookL2_25",
+        FTX: "orderbook",
+        FTX_US: "orderbook",
         GEMINI: UNSUPPORTED,
         BITTREX: 'SubscribeToSummaryDeltas',
         BITCOINCOM: 'subscribeTicker',
         BITMAX: UNSUPPORTED,
-        UPBIT: UNSUPPORTED,
+        UPBIT: L2_BOOK,
         GATEIO: UNSUPPORTED,
         PROBIT: UNSUPPORTED
     },
@@ -222,7 +226,8 @@ _feed_to_exchange_map = {
         DERIBIT: 'ticker',
         OKEX: '{}/funding_rate',
         FTX: 'funding',
-        HUOBI_SWAP: 'funding'
+        HUOBI_SWAP: 'funding',
+        HUOBI_LINEAR_SWAP: 'funding'
     },
     OPEN_INTEREST: {
         OKEX: '{}/ticker',

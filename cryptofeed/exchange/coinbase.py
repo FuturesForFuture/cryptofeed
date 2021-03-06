@@ -92,6 +92,8 @@ class Coinbase(Feed):
                             symbol=symbol_exchange_to_std(msg['product_id']),
                             bid=Decimal(msg['best_bid']),
                             ask=Decimal(msg['best_ask']),
+                            bid_amount=None,
+                            ask_amount=None,
                             timestamp=timestamp_normalize(self.id, msg['time']),
                             receipt_timestamp=timestamp)
 

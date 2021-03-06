@@ -27,6 +27,12 @@ SYMBOL_SEP = '-'
 _symbols_retrieval_cache: Dict[str, Dict[str, str]] = {}
 _exchange_info = defaultdict(lambda: defaultdict(dict))
 
+target_symbols_list = [
+    "BTC", "ETH", "ADA", "BNB", "DOT", "XRP", "UNI", "LTC", "LINK", "BCH",
+]
+USD_symbols_list = [
+    'USDT', 'BUSD', 'USD', 'HUSD'
+]
 
 def raise_failure_explanation(feed_id: str, exception: BaseException, responses: Dict[str, Optional[Response]]):
     LOG.critical('%s: encountered %r while processing response from exchange API', feed_id, exception)
@@ -70,12 +76,26 @@ def _binance_symbols(endpoint: str, exchange: str):
         ret = {}
         r = requests.get(endpoint)
         for symbol in r.json()['symbols']:
+
+            raw_symbol = symbol['symbol']
+            if exchange in (BINANCE_FUTURES, BINANCE_DELIVERY):
+                # futures market
+                if not any([x in raw_symbol for x in target_symbols_list]):
+                    continue
+            elif exchange == BINANCE:
+                if not any([raw_symbol == (x + y) for x in target_symbols_list for y in USD_symbols_list]):
+                    continue
+            else:
+                assert False, 'not implemented'
+
             split = len(symbol['baseAsset'])
             normalized = symbol['symbol'][:split] + SYMBOL_SEP + symbol['symbol'][split:]
             ret[normalized] = symbol['symbol']
             _exchange_info[exchange]['tick_size'][normalized] = symbol['filters'][0]['tickSize']
             if "contractType" in symbol:
                 _exchange_info[exchange]['contract_type'] = symbol['contractType']
+
+
         return ret
     except Exception as why:
         raise_failure_explanation(exchange, why, {endpoint: r})
@@ -163,6 +183,18 @@ def _ftx_helper(endpoint: str, exchange: str):
         r = requests.get(endpoint)
         ret = {}
         for data in r.json()['result']:
+            if '-' in data['name']:
+                # futures
+                if not any([x == data['name'].split('-')[0] for x in target_symbols_list]):
+                    continue
+            elif '/' in data['name']:
+                # spot
+                if not any([data['name'] == (x + '/' + y) for x in target_symbols_list for y in USD_symbols_list]):
+                    continue
+            else:
+                print(data['name'] + ' not expected')
+                continue
+
             normalized = data['name'].replace("/", SYMBOL_SEP)
             symbol = data['name']
             ret[normalized] = symbol
@@ -186,6 +218,9 @@ def coinbase_symbols() -> Dict[str, str]:
         r = requests.get('https://api.pro.coinbase.com/products')
         ret = {}
         for data in r.json():
+            if not any([data['id'] == (x + '-' + y) for x in target_symbols_list for y in USD_symbols_list]):
+                continue
+
             normalized = data['id'].replace("-", SYMBOL_SEP)
             ret[normalized] = data['id']
             _exchange_info[COINBASE]['tick_size'][normalized] = data['quote_increment']
@@ -273,6 +308,11 @@ def kraken_symbols() -> Dict[str, str]:
 
             base, quote = data['result'][symbol]['wsname'].split("/")
 
+            if base in target_symbols_list and quote in USD_symbols_list:
+                pass
+            else:
+                continue
+
             normalized = f"{base}{SYMBOL_SEP}{quote}"
             exch = data['result'][symbol]['wsname']
             normalized = normalized.replace('XBT', 'BTC')
@@ -305,6 +345,10 @@ def huobi_common_symbols(url: str):
         ret = {}
         for e in r.json()['data']:
             normalized = f"{e['base-currency'].upper()}{SYMBOL_SEP}{e['quote-currency'].upper()}"
+
+            if not any([normalized == (f"{x.upper()}{SYMBOL_SEP}{y.upper()}") for x in target_symbols_list for y in USD_symbols_list]):
+                continue
+
             symbol = f"{e['base-currency']}{e['quote-currency']}"
             ret[normalized] = symbol
         return ret
@@ -336,6 +380,10 @@ def huobi_dm_symbols() -> Dict[str, str]:
         r = requests.get('https://www.hbdm.com/api/v1/contract_contract_info')
         symbols = {}
         for e in r.json()['data']:
+
+            if not any([x in e['contract_code'] for x in target_symbols_list]):
+                continue
+
             symbols[f"{e['symbol']}_{mapping[e['contract_type']]}"] = e['contract_code']
             _exchange_info[HUOBI_DM]['tick_size'][e['contract_code']] = e['price_tick']
             _exchange_info[HUOBI_DM]['short_code_mappings'][f"{e['symbol']}_{mapping[e['contract_type']]}"] = e['contract_code']
@@ -350,12 +398,30 @@ def huobi_swap_symbols() -> Dict[str, str]:
         r = requests.get('https://api.hbdm.com/swap-api/v1/swap_contract_info')
         symbols = {}
         for e in r.json()['data']:
+            if not any([x in e['contract_code'] for x in target_symbols_list]):
+                continue
+
             symbols[e['contract_code']] = e['contract_code']
             _exchange_info[HUOBI_SWAP]['tick_size'][e['contract_code']] = e['price_tick']
         return symbols
     except Exception as why:
         raise_failure_explanation('HUOBI_SWAP', why, {"": r})
 
+def huobi_linear_swap_symbols() -> Dict[str, str]:
+    r = None
+    try:
+        r = requests.get('https://api.hbdm.com/linear-swap-api/v1/swap_contract_info')
+        symbols = {}
+        for e in r.json()['data']:
+            if not any([x in e['contract_code'] for x in target_symbols_list]):
+                continue
+
+            symbols[e['contract_code']] = e['contract_code']
+
+            _exchange_info[HUOBI_LINEAR_SWAP]['tick_size'][e['contract_code']] = e['price_tick']
+        return symbols
+    except Exception as why:
+        raise_failure_explanation('HUOBI_LINEAR_SWAP', why, {"": r})
 
 def okcoin_symbols() -> Dict[str, str]:
     r = None
@@ -376,17 +442,28 @@ def okex_symbols() -> Dict[str, str]:
                   'https://www.okex.com/api/swap/v3/instruments/ticker',
                   'https://www.okex.com/api/futures/v3/instruments/ticker']
     # To respect rate limit constraints per endpoint, we alternate options and other instrument types
-    urls: List[str] = []
-    for i in range(max(len(option_urls), len(other_urls))):
-        if i < len(option_urls):
-            urls.append(option_urls[i])
-        if i < len(other_urls):
-            urls.append(other_urls[i])
+    urls: List[str] = option_urls + other_urls
+
     # Collect together the symbols of each endpoint
     symbols: Dict[str, str] = {}
     for u in urls:
         time.sleep(0.2)
-        symbols.update(okex_symbols_from_one_url(u))
+        new_symbols = okex_symbols_from_one_url(u)
+
+        for symbol in new_symbols:
+            if u in option_urls:
+                if not any([x in symbol for x in target_symbols_list]):
+                    continue
+            elif 'spot' in u:
+                if not any([symbol == (x + '-' + y) for x in target_symbols_list for y in USD_symbols_list]):
+                    continue
+            elif 'swap' in u or 'futures' in u:
+                if not any([x in symbol for x in target_symbols_list]):
+                    continue
+
+            symbols[symbol] = new_symbols[symbol]
+        # symbols.update(new_symbols)
+
     return symbols
 
 
@@ -448,7 +525,14 @@ def upbit_symbols() -> Dict[str, str]:
     r = None
     try:
         r = requests.get('https://api.upbit.com/v1/market/all')
-        return {f"{data['market'].split('-')[1]}{SYMBOL_SEP}{data['market'].split('-')[0]}": data['market'] for data in r.json()}
+
+        ret = {}
+        for data in r.json():
+            if not any([data['market'] == (y + '-' + x) for x in target_symbols_list for y in USD_symbols_list]):
+                continue
+            ret[f"{data['market'].split('-')[1]}{SYMBOL_SEP}{data['market'].split('-')[0]}"] = data['market']
+
+        return ret
     except Exception as why:
         raise_failure_explanation('UPBIT', why, {"": r})
 
@@ -484,8 +568,11 @@ def bitmex_symbols() -> Dict[str, str]:
             if entry['expiry']:
                 components.append(entry['symbol'][-3:])
 
-            normalized = SYMBOL_SEP.join(components)
-            normalized = normalized.replace("XBT", "BTC")
+            # normalized = SYMBOL_SEP.join(components)
+            # normalized = normalized.replace("XBT", "BTC")
+
+            normalized = entry['symbol']
+
             ret[normalized] = entry['symbol']
             _exchange_info[BITMEX]['tick_size'][normalized] = entry['tickSize']
 
@@ -776,6 +863,7 @@ _exchange_function_map = {
     HUOBI: huobi_symbols,
     HUOBI_DM: huobi_dm_symbols,
     HUOBI_SWAP: huobi_swap_symbols,
+    HUOBI_LINEAR_SWAP: huobi_linear_swap_symbols,
     OKCOIN: okcoin_symbols,
     OKEX: okex_symbols,
     BYBIT: bybit_symbols,

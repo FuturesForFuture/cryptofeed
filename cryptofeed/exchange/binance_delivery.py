@@ -11,6 +11,7 @@ from yapic import json
 
 from cryptofeed.defines import BINANCE_DELIVERY, OPEN_INTEREST, TICKER
 from cryptofeed.exchange.binance import Binance
+from cryptofeed.standards import symbol_exchange_to_std, timestamp_normalize
 
 LOG = logging.getLogger('feedhandler')
 
@@ -57,6 +58,35 @@ class BinanceDelivery(Binance):
             LOG.warning("%s: Missing book update detected, resetting book", self.id)
             skip_update = True
         return skip_update, forced
+
+    async def _ticker(self, msg: dict, timestamp: float):
+        """
+        https://binance-docs.github.io/apidocs/delivery/cn/#symbol
+        {
+          "e":"bookTicker",         // 事件类型
+          "u":17242169,             // 更新ID
+          "s":"BTCUSD_200626",      // 交易对
+          "ps":"BTCUSD",                 // 标的交易对
+          "b":"9548.1",             // 买单最优挂单价格
+          "B":"52",                 // 买单最优挂单数量
+          "a":"9548.5",             // 卖单最优挂单价格
+          "A":"11",                 // 卖单最优挂单数量
+          "T":1591268628155,        // 撮合时间
+          "E":1591268628166         // 事件时间
+        }
+        """
+        pair = symbol_exchange_to_std(msg['s'])
+        bid = Decimal(msg['b'])
+        ask = Decimal(msg['a'])
+        await self.callback(TICKER, feed=self.id,
+                            symbol=pair,
+                            bid=bid,
+                            ask=ask,
+                            bid_amount=Decimal(msg["B"]),
+                            ask_amount=Decimal(msg["A"]),
+                            timestamp=timestamp_normalize(self.id, msg['E']),
+                            receipt_timestamp=timestamp)
+
 
     async def message_handler(self, msg: str, conn, timestamp: float):
         msg = json.loads(msg, parse_float=Decimal)

@@ -13,7 +13,7 @@ from sortedcontainers import SortedDict as sd
 from yapic import json
 
 from cryptofeed.connection import AsyncConnection
-from cryptofeed.defines import BID, ASK, BUY, BYBIT, L2_BOOK, SELL, TRADES, OPEN_INTEREST, FUTURES_INDEX
+from cryptofeed.defines import BID, ASK, BUY, BYBIT, L2_BOOK, SELL, TRADES, OPEN_INTEREST, FUTURES_INDEX, TICKER
 from cryptofeed.feed import Feed
 from cryptofeed.standards import symbol_exchange_to_std as normalize_pair
 from cryptofeed.standards import timestamp_normalize
@@ -238,3 +238,15 @@ class Bybit(Feed):
         if isinstance(ts, str):
             ts = int(ts)
         await self.book_callback(self.l2_book[pair], L2_BOOK, pair, forced, delta, ts / 1000000, timestamp)
+
+        book = self.l2_book[pair]
+        ask_price_0, ask_qty_0 = book[ASK].peekitem(index=0)
+        bid_price_0, bid_qty_0 = book[BID].peekitem(index=-1)
+        await self.callback(TICKER, feed=self.id,
+                            symbol=pair,
+                            bid=bid_price_0,
+                            ask=ask_price_0,
+                            bid_amount=bid_qty_0,
+                            ask_amount=ask_qty_0,
+                            timestamp=ts / 1000000,
+                            receipt_timestamp=timestamp)

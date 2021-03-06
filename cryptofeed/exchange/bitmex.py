@@ -146,11 +146,48 @@ class Bitmex(Feed):
         await self.book_callback(self.l2_book[pair], L2_BOOK, pair, forced, delta, timestamp, timestamp)
 
     async def _ticker(self, msg: dict, timestamp: float):
+        """
+        {
+          "action": "partial",
+          "attributes": {
+            "timestamp": "sorted",
+            "symbol": "grouped"
+          },
+          "data": [
+            {
+              "timestamp": "2021-03-06T08:54:31.233Z",
+              "symbol": "YFIUSDTH21",
+              "bidSize": 24,
+              "bidPrice": 34723.5,
+              "askPrice": 34940.5,
+              "askSize": 582
+            }
+          ],
+          "filter": {
+            "symbol": "YFIUSDTH21"
+          },
+          "foreignKeys": {
+            "symbol": "instrument"
+          },
+          "keys": [],
+          "table": "quote",
+          "types": {
+            "timestamp": "timestamp",
+            "symbol": "symbol",
+            "bidSize": "long",
+            "bidPrice": "float",
+            "askPrice": "float",
+            "askSize": "long"
+          }
+        }
+        """
         for data in msg['data']:
             await self.callback(TICKER, feed=self.id,
                                 symbol=data['symbol'],
                                 bid=Decimal(data['bidPrice']),
+                                bid_amount=Decimal(data['bidSize']),
                                 ask=Decimal(data['askPrice']),
+                                ask_amount=Decimal(data['askSize']),
                                 timestamp=timestamp_normalize(self.id, data['timestamp']),
                                 receipt_timestamp=timestamp)
 
@@ -464,7 +501,6 @@ class Bitmex(Feed):
                                     receipt_timestamp=timestamp)
 
     async def message_handler(self, msg: str, conn, timestamp: float):
-
         msg = json.loads(msg, parse_float=Decimal)
         if 'table' in msg:
             if msg['table'] == 'trade':
