@@ -70,7 +70,6 @@ class OKCoin(Feed):
         for chunk in split.list_by_max_items(symbol_channels, 33):
             LOG.info("%s: Subscribe to %s args from %r to %r", self.id, len(chunk), chunk[0], chunk[-1])
             request = {"op": "subscribe", "args": chunk}
-            print(request)
             await conn.send(json.dumps(request))
 
     @staticmethod
