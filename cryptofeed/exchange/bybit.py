@@ -219,6 +219,9 @@ class Bybit(Feed):
                 self.l2_book[pair][side][Decimal(update['price'])] = Decimal(update['size'])
             forced = True
         else:
+            if pair not in self.l2_book:
+                self.l2_book[pair] = {BID: sd({}), ASK: sd({})}
+
             for delete in data['delete']:
                 side = BID if delete['side'] == 'Buy' else ASK
                 price = Decimal(delete['price'])

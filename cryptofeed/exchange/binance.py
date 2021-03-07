@@ -114,7 +114,7 @@ class Binance(Feed):
                             ask=ask,
                             bid_amount=Decimal(msg["B"]),
                             ask_amount=Decimal(msg["A"]),
-                            timestamp=None,
+                            timestamp=timestamp,
                             receipt_timestamp=timestamp)
 
     async def _liquidations(self, msg: dict, timestamp: float):
