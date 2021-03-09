@@ -6,10 +6,11 @@ associated with this software.
 '''
 from decimal import Decimal
 import logging
+from typing import Tuple
 
 from yapic import json
 
-from cryptofeed.defines import BINANCE_DELIVERY, OPEN_INTEREST, TICKER
+from cryptofeed.defines import BINANCE_DELIVERY
 from cryptofeed.exchange.binance import Binance
 from cryptofeed.standards import symbol_exchange_to_std, timestamp_normalize
 
@@ -17,6 +18,7 @@ LOG = logging.getLogger('feedhandler')
 
 
 class BinanceDelivery(Binance):
+    valid_depths = [5, 10, 20, 50, 100, 500, 1000]
     id = BINANCE_DELIVERY
 
     def __init__(self, **kwargs):
@@ -26,23 +28,7 @@ class BinanceDelivery(Binance):
         self.rest_endpoint = 'https://dapi.binance.com/dapi/v1'
         self.address = self._address()
 
-    def _address(self):
-        address = self.ws_endpoint + '/stream?streams='
-        for chan in self.channels if not self.subscription else self.subscription:
-            if chan == OPEN_INTEREST:
-                continue
-            for pair in self.symbols if not self.subscription else self.subscription[chan]:
-                pair = pair.lower()
-                if chan == TICKER:
-                    stream = f"{pair}@bookTicker/"
-                else:
-                    stream = f"{pair}@{chan}/"
-                address += stream
-        if address == f"{self.ws_endpoint}/stream?streams=":
-            return None
-        return address[:-1]
-
-    def _check_update_id(self, pair: str, msg: dict) -> (bool, bool):
+    def _check_update_id(self, pair: str, msg: dict) -> Tuple[bool, bool]:
         skip_update = False
         forced = not self.forced[pair]
 

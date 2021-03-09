@@ -13,7 +13,7 @@ from sortedcontainers import SortedDict as sd
 from yapic import json
 
 from cryptofeed.connection import AsyncConnection
-from cryptofeed.defines import BID, ASK, BINANCE, BUY, FUNDING, L2_BOOK, LIQUIDATIONS, SELL, TICKER, TRADES
+from cryptofeed.defines import BID, ASK, BINANCE, BUY, FUNDING, L2_BOOK, LIQUIDATIONS, OPEN_INTEREST, SELL, TICKER, TRADES
 from cryptofeed.feed import Feed
 from cryptofeed.standards import symbol_exchange_to_std, timestamp_normalize
 
@@ -23,6 +23,7 @@ LOG = logging.getLogger('feedhandler')
 
 class Binance(Feed):
     id = BINANCE
+    valid_depths = [5, 10, 20, 50, 100, 500, 1000, 5000]
 
     def __init__(self, **kwargs):
         super().__init__({}, **kwargs)
@@ -44,7 +45,10 @@ class Binance(Feed):
         ret = {}
         counter = 0
         address = self.ws_endpoint + '/stream?streams='
+
         for chan in self.channels if not self.subscription else self.subscription:
+            if chan == OPEN_INTEREST:
+                continue
             for pair in self.symbols if not self.subscription else self.subscription[chan]:
                 pair = pair.lower()
                 stream = f"{pair}@{chan}/"
@@ -56,6 +60,8 @@ class Binance(Feed):
                     address = self.ws_endpoint + '/stream?streams='
 
         if len(ret) == 0:
+            if address == f"{self.ws_endpoint}/stream?streams=":
+                return None
             return address[:-1]
         if counter > 0:
             ret[stream] = address[:-1]
@@ -97,24 +103,31 @@ class Binance(Feed):
     async def _ticker(self, msg: dict, timestamp: float):
         """
         {
-          "u":400900217,     // order book updateId
-          "s":"BNBUSDT",     // 交易对
-          "b":"25.35190000", // 买单最优挂单价格
-          "B":"31.21000000", // 买单最优挂单数量
-          "a":"25.36520000", // 卖单最优挂单价格
-          "A":"40.66000000"  // 卖单最优挂单数量
+            'u': 382569232,
+            's': 'FETUSDT',
+            'b': '0.36031000',
+            'B': '1500.00000000',
+            'a': '0.36092000',
+            'A': '176.40000000'
         }
         """
         pair = symbol_exchange_to_std(msg['s'])
         bid = Decimal(msg['b'])
         ask = Decimal(msg['a'])
+
+        # Binance does not have a timestamp in this update, but the two futures APIs do
+        if 'E' in msg:
+            ts = timestamp_normalize(self.id, msg['E'])
+        else:
+            ts = timestamp
+
         await self.callback(TICKER, feed=self.id,
                             symbol=pair,
                             bid=bid,
                             ask=ask,
                             bid_amount=Decimal(msg["B"]),
                             ask_amount=Decimal(msg["A"]),
-                            timestamp=timestamp,
+                            timestamp=ts,
                             receipt_timestamp=timestamp)
 
     async def _liquidations(self, msg: dict, timestamp: float):
@@ -149,7 +162,13 @@ class Binance(Feed):
                             receipt_timestamp=timestamp)
 
     async def _snapshot(self, conn: AsyncConnection, pair: str) -> None:
-        url = f'{self.rest_endpoint}/depth?symbol={pair}&limit={self.max_depth if self.max_depth else 1000}'
+        max_depth = self.max_depth if self.max_depth else 1000
+        if max_depth not in self.valid_depths:
+            for d in self.valid_depths:
+                if d > max_depth:
+                    max_depth = d
+
+        url = f'{self.rest_endpoint}/depth?symbol={pair}&limit={max_depth}'
         resp = await conn.get(url)
         resp = json.loads(resp, parse_float=Decimal)
 
@@ -259,6 +278,7 @@ class Binance(Feed):
         pair, _ = msg['stream'].split('@', 1)
         msg = msg['data']
         pair = pair.upper()
+<<<<<<< HEAD
 
         if 'e' not in msg:
             # ticker
@@ -271,6 +291,21 @@ class Binance(Feed):
             await self._liquidations(msg, timestamp)
         elif msg['e'] == 'markPriceUpdate':
             await self._funding(msg, timestamp)
+=======
+        if 'e' in msg:
+            if msg['e'] == 'depthUpdate':
+                await self._book(conn, msg, pair, timestamp)
+            elif msg['e'] == 'aggTrade':
+                await self._trade(msg, timestamp)
+            elif msg['e'] == 'forceOrder':
+                await self._liquidations(msg, timestamp)
+            elif msg['e'] == 'markPriceUpdate':
+                await self._funding(msg, timestamp)
+            else:
+                LOG.warning("%s: Unexpected message received: %s", self.id, msg)
+        elif 'A' in msg:
+            await self._ticker(msg, timestamp)
+>>>>>>> realorigin/master
         else:
             LOG.warning("%s: Unexpected message received: %s", self.id, msg)
 
