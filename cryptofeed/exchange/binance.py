@@ -278,8 +278,6 @@ class Binance(Feed):
         pair, _ = msg['stream'].split('@', 1)
         msg = msg['data']
         pair = pair.upper()
-<<<<<<< HEAD
-
         if 'e' not in msg:
             # ticker
             await self._ticker(msg, timestamp)
@@ -291,21 +289,6 @@ class Binance(Feed):
             await self._liquidations(msg, timestamp)
         elif msg['e'] == 'markPriceUpdate':
             await self._funding(msg, timestamp)
-=======
-        if 'e' in msg:
-            if msg['e'] == 'depthUpdate':
-                await self._book(conn, msg, pair, timestamp)
-            elif msg['e'] == 'aggTrade':
-                await self._trade(msg, timestamp)
-            elif msg['e'] == 'forceOrder':
-                await self._liquidations(msg, timestamp)
-            elif msg['e'] == 'markPriceUpdate':
-                await self._funding(msg, timestamp)
-            else:
-                LOG.warning("%s: Unexpected message received: %s", self.id, msg)
-        elif 'A' in msg:
-            await self._ticker(msg, timestamp)
->>>>>>> realorigin/master
         else:
             LOG.warning("%s: Unexpected message received: %s", self.id, msg)
 
