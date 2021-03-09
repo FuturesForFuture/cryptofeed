@@ -39,8 +39,8 @@ def load_exchange_symbol_mapping(exchange: str, key_id=None):
         _std_trading_symbols[std][exchange] = exch
 
 
-def get_exchange_info(exchange: str, key_id=None):
-    mapping = gen_symbols(exchange, key_id=key_id)
+def get_exchange_info(exchange: str, key_id=None, force_update=False):
+    mapping = gen_symbols(exchange, key_id=key_id, force_update)
     info = dict(_exchange_info.get(exchange, {}))
     return mapping, info
 

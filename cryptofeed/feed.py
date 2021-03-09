@@ -155,14 +155,14 @@ class Feed:
         return ret
 
     @classmethod
-    def info(cls, key_id: str = None) -> dict:
+    def info(cls, key_id: str = None, force_update: bool = False) -> dict:
         """
         Return information about the Exchange - what trading symbols are supported, what data channels, etc
 
         key_id: str
             API key to query the feed, required when requesting supported coins/symbols.
         """
-        symbols, info = get_exchange_info(cls.id, key_id=key_id)
+        symbols, info = get_exchange_info(cls.id, key_id=key_id, force_update)
         data = {'symbols': list(symbols.keys()), 'channels': []}
         for channel in (FUNDING, FUTURES_INDEX, LIQUIDATIONS, L2_BOOK, L3_BOOK, OPEN_INTEREST, MARKET_INFO, TICKER, TRADES, TRANSACTIONS, VOLUME):
             try:

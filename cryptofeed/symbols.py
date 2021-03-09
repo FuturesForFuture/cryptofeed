@@ -56,8 +56,8 @@ def get_symbol_separator() -> str:
     return SYMBOL_SEP
 
 
-def gen_symbols(exchange: str, key_id=None) -> Dict[str, str]:
-    if exchange not in _symbols_retrieval_cache:
+def gen_symbols(exchange: str, key_id=None, force_update=False) -> Dict[str, str]:
+    if exchange not in _symbols_retrieval_cache or force_update:
         LOG.info("%s: Getting list of symbols", exchange)
         symbols = _exchange_function_map[exchange](key_id) if key_id else _exchange_function_map[exchange]()
         LOG.info("%s: %s symbols", exchange, len(symbols))
