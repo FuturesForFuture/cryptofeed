@@ -40,7 +40,7 @@ def load_exchange_symbol_mapping(exchange: str, key_id=None):
 
 
 def get_exchange_info(exchange: str, key_id=None, force_update=False):
-    mapping = gen_symbols(exchange, key_id=key_id, force_update)
+    mapping = gen_symbols(exchange, key_id=key_id, force_update=force_update)
     info = dict(_exchange_info.get(exchange, {}))
     return mapping, info
 
